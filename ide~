@@ -1,0 +1,5 @@
+echo Backup current Makefile to Makefile-pkg
+mv Makefile Makefile-pkg
+echo Restore Makefile-nb to Makefile
+mv Makefile-nb Makefile
+echo Can build in netbeans IDE now!

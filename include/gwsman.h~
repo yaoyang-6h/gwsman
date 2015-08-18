@@ -1,0 +1,33 @@
+/* 
+ * File:   gwsman.h
+ * Author: wyy
+ *
+ * Created on 2014年2月27日, 下午4:56
+ */
+
+#ifndef GWSMAN_H
+#define	GWSMAN_H
+
+#include "shmem.h"
+#ifdef	__cplusplus
+extern "C" {
+#endif
+    
+#define LOGO_PROMPT         "6H-" //6-Harmonics "
+#define VERSION_INFO        "107"
+#define MAX_CHANNEL_NOISE   -60
+#define MIN_CHANNEL_NOISE   -101
+#define DEBUG_INFO_BASE "/sys/kernel/debug/ieee80211/phy0/ath9k/"
+#define DEBUG_INFO_QUEUES  "queues"
+#define DEBUG_INFO_QLEN_KEY "pending:"
+
+#define GWS_ERROR_INVALIDATE_CHANNEL    -1
+
+void iw_setchannel(int nChannel, P_GWS_KPI pKpi, int nId);
+short iw_getcurrchan(P_GWS_KPI pKpi, int nId);
+int iw_noise(const char* ifname, int nChannel, P_GWS_KPI pKpi, int nId);
+char* iwinfo(const char* ifname, int key, P_GWS_KPI pKpi, int nId);
+int chanscan_main(int argc, char** argv);
+
+#endif	/* GWSMAN_H */
+

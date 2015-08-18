@@ -1,0 +1,49 @@
+#
+# Top level makefile for gwsman  application
+#
+#
+# Copyright (C) 2010-2014 6Harmonics Inc.
+#
+# 
+#
+include $(TOPDIR)/rules.mk
+PKG_NAME:=gwsman
+PKG_VERSION:=1.04
+PKG_RELEASE:=1
+
+PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/gwsman
+  SECTION:=utils
+  CATEGORY:=Utilities
+  TITLE:=6H-GWS Wireless management utility
+  DEPENDS:=+liblua +libnl-genl +libnl +libpthread
+  MAINTAINER:=6Harmonics
+endef
+
+define Package/gwsman/description
+  6Harmonics GWS manager
+endef
+
+
+define Build/Prepare
+	$(CP) -r ./include $(PKG_BUILD_DIR)/
+	$(CP) -r ./src $(PKG_BUILD_DIR)/
+	$(CP) -r ./libs $(PKG_BUILD_DIR)/
+	$(CP) -r ./nbproject $(PKG_BUILD_DIR)/
+	$(CP) ./mk/Makefile-nb $(PKG_BUILD_DIR)/Makefile
+endef
+
+define Build/Configure
+endef
+	
+define Package/gwsman/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/dist/Release/GNU_MIPS32-Linux-x86/gwsman $(1)/usr/sbin/gwsman
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/src/gwsman.conf $(1)/etc/config/gwsman.conf
+endef
+
+$(eval $(call BuildPackage,gwsman))

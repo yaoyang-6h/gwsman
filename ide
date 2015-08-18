@@ -1,0 +1,3 @@
+echo Restore Makefile-nb to Makefile
+cp ./mk/Makefile-nb Makefile
+echo Can build in netbeans IDE now!

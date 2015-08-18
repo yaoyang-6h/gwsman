@@ -1,0 +1,808 @@
+/* 
+ * File:   noisedetective.cc
+ * Author: wyy, llj
+ *
+ * Created on 2014年3月21日, 上午10:49
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/msg.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <errno.h>
+#include <string.h>
+#include "../../../libs/serialcom/include/c-serial-com.h"
+#include "../../../libs/readconf/include/readconf.h"
+#define USE_NL80211
+#include "iwinfo.h"
+#include "chanscan.h"
+#include "shmem.h"
+#include "GuiMain.h"
+
+#define uchar           unsigned char
+//#define ShowStatusBar(fmt,...)        do {              \
+//            printf(VT100_GOTO("23","1"));               \
+//            printf("%s::" fmt,__func__,##__VA_ARGS__);  \
+//            fflush(stdout);     \
+//        } while (0)
+
+#define min(x,y)    (x > y ? y : x)
+#define max(x,y)    (x > y ? x : y)
+
+static int displayType = 0; //0 for screen display, 1 for Qige (need to use command line option to change)
+static int outputType = 0; //0 for channel order with increasing NF values, 1 for sequential channel order
+
+static int defaultList[] = {
+    14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+    31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+
+};
+
+struct scanRslt {
+    int chIdx; // channel index
+    double avgNF; // average NF value
+    int minNF; // minimum NF value
+    int maxNF; // maximum NF value
+    double baseNF; // average NF value of base channel
+    double diffNF; // relative average NF value compared with base channel
+    int N; // total number of NF measurements
+    int time; // NF measurement time in ms
+};
+
+static int global_NF_buf[NF_BUF_SIZE] = {0}; // NF buffer for a CH
+static int global_NF_buf_idx = 0; // index for next element in global_NF_buf
+static int global_NFrslt_enable = 0; // =1 to enable record NF result into NFrslt
+
+static struct termios ori_attr, cur_attr;
+
+static __inline
+int tty_reset(void) {
+    if (3 == displayType) {
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &ori_attr) != 0)
+            return -1;
+    }
+    return 0;
+}
+
+static __inline
+int tty_set(void) {
+    if (3 == displayType) {
+        if (tcgetattr(STDIN_FILENO, &ori_attr))
+            return -1;
+
+        memcpy(&cur_attr, &ori_attr, sizeof (cur_attr));
+        cur_attr.c_lflag &= ~ICANON;
+        //        cur_attr.c_lflag |= ECHO;
+        cur_attr.c_lflag &= ~ECHO;
+        cur_attr.c_cc[VMIN] = 1;
+        cur_attr.c_cc[VTIME] = 0;
+
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &cur_attr) != 0)
+            return -1;
+    }
+    return 0;
+}
+
+static __inline
+int kbhit(void) {
+    if (3 == displayType) {
+        fd_set rfds;
+        struct timeval tv;
+        int retval;
+
+        /* Watch stdin (fd 0) to see when it has input. */
+        FD_ZERO(&rfds);
+        FD_SET(0, &rfds);
+        /* Wait up to five seconds. */
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+
+        retval = select(1, &rfds, NULL, NULL, &tv);
+        /* Don't rely on the value of tv now! */
+
+        if (retval == -1) {
+            perror("select()");
+            return 0;
+        } else if (retval)
+            return 1;
+            /* FD_ISSET(0, &rfds) will be true. */
+        else
+            return 0;
+    }
+    return 0;
+}
+
+int get_noise() {
+    const struct iwinfo_ops* iw = &nl80211_ops;
+    int value = 0;
+
+    iw->noise("wlan0", &value);
+
+    return (value);
+}
+
+void ReadLineConf(int argc, char* argv[],
+        int* nPort, int* nBaud, int* nBits, int* nStop, char* cParity,
+        int* scanTime, int* outputList/*[MAX_CHANNEL_N]*/, int* NchannelAll) {
+    int i = 0;
+    char chList[100];
+    for (i = 1; i < argc; i++) {
+        char* szArgv = argv[i];
+        char* p = NULL;
+        if ((p = strstr(szArgv, "port=")) != NULL) {
+            sscanf(p + 5, "%d", nPort);
+            if (*nPort < 1 || *nPort > 8) {
+                printf("\nInvalidate serial port:%d\n", *nPort);
+                return PrintHelp();
+            }
+        } else if ((p = strstr(szArgv, "baud=")) != NULL) {
+            sscanf(p + 5, "%d", nBaud);
+            if (*nBaud != 1200 && *nBaud != 2400 && *nBaud != 4800 &&
+                    *nBaud != 9600 && *nBaud != 19200 && *nBaud != 38400 &&
+                    *nBaud != 57600 && *nBaud != 115200) {
+                printf("\nInvalidate bard rate:%d\n", *nBaud);
+                return PrintHelp();
+            }
+        } else if ((p = strstr(szArgv, "bits=")) != NULL) {
+            sscanf(p + 5, "%d", nBits);
+            if (*nBits != 7 && *nBits != 8) {
+                printf("\nInvalidate data bits:%d\n", *nBits);
+                return PrintHelp();
+            }
+        } else if ((p = strstr(szArgv, "stop=")) != NULL) {
+            sscanf(p + 5, "%d", nStop);
+            if (*nStop != 1 && *nStop != 2) {
+                printf("\nInvalidate stop bits:%d\n", *nStop);
+                return PrintHelp();
+            }
+        } else if ((p = strstr(szArgv, "parity=")) != NULL) {
+            sscanf(p + 7, "%c", cParity);
+            if (*cParity != 'N' && *cParity != 'n' && *cParity != 'O' &&
+                    *cParity != 'o' && *cParity != 'E' && *cParity != 'e') {
+                printf("\nInvalidate parity:%c\n", *cParity);
+                return PrintHelp();
+            }
+        } else if ((p = strstr(szArgv, "t=")) != NULL) {
+            sscanf(p + 2, "%d", scanTime);
+            // trigger internal  minimum scan time
+            if (*scanTime == INTERNAL_CODE) {
+                *scanTime = NF_MIN_TIME_MIN;
+            } else {
+                *scanTime = (*scanTime) * 1000000;
+                // scan time has to be at least the least time
+                if (*scanTime < NF_MIN_TIME) *scanTime = NF_MIN_TIME;
+            }
+        } else if ((p = strstr(szArgv, "c=")) != NULL) {
+            sscanf(p + 2, "%s", chList);
+            *NchannelAll = getChList(chList, outputList);
+        } else if ((p = strstr(szArgv, "d=")) != NULL) {
+            sscanf(p + 2, "%d", &displayType);
+            if (displayType != 0 && displayType != 1 && displayType != 2) return PrintHelp();
+        } else if ((p = strstr(szArgv, "e=")) != NULL) {
+            sscanf(p + 2, "%d", &outputType);
+            if (outputType != 0 && outputType != 1) return PrintHelp();
+        }
+    }
+}
+
+int getChList(char chList[], int outputList[MAX_CHANNEL_N]) {
+    int chanList[MAX_CHANNEL_N]; // outputList[MAX_CHANNEL_N];
+    int tempN[3], idx = 0;
+    char* tempList;
+    int i, j;
+
+    //initiate chanList
+    for (i = 0; i < MAX_CHANNEL_N; i++) chanList[i] = DEFAULT_NO_CHANNEL_IDX;
+
+    tempList = chList;
+
+    do {
+        //if the next element is a number, save it to tempN
+        if (isdigit(*tempList)) {
+            tempN[idx++] = strtol(tempList, &tempList, 10);
+        }
+
+        //if the next element is ":", jump over
+        if (*tempList == ':') {
+            tempList++;
+        }
+
+        //if the next element is ",", reset idx, add to chanList
+        if (!isdigit(*tempList) && (*tempList != ':')) {
+            tempList++;
+            //add to chanList: one channel
+            if (idx == 1) {
+                for (i = 0; i < sizeof (defaultList) / sizeof (defaultList[0]); i++) {
+                    if (tempN[0] == defaultList[i]) chanList[i] = defaultList[i];
+                }
+            }
+
+            //add to chanList: multiple channels
+            if (idx == 2) {
+                for (i = 0; i < sizeof (defaultList) / sizeof (defaultList[0]); i++) {
+                    if ((tempN[0] <= defaultList[i]) && (defaultList[i] <= tempN[1])) chanList[i] = defaultList[i];
+                }
+            }
+            //reset idx
+            idx = 0;
+        }
+    } while (isdigit(*tempList) || (*tempList == ':') || (*tempList == ','));
+
+    // initiate outputList
+    for (i = 0; i < MAX_CHANNEL_N; i++) outputList[i] = DEFAULT_NO_CHANNEL_IDX;
+    // generate output channel list
+    j = 0;
+    for (i = 0; i < MAX_CHANNEL_N; i++) {
+        if (chanList[i] != DEFAULT_NO_CHANNEL_IDX)
+            outputList[j++] = chanList[i];
+    }
+
+    return j;
+}
+
+#define MIN_CHAN_NO     14
+#define MAX_CHAN_NO     51
+
+static int currentChannel = MIN_CHAN_NO - 1;
+static struct timeval switch_time = {0, 0};
+static struct timeval last_time = {0, 0};
+
+__suseconds_t deff_time(struct timeval* t0, struct timeval* t1) {
+//    struct timeval td;
+    __suseconds_t   usec1 = t1->tv_sec * 1000000 + t1->tv_usec;
+    __suseconds_t   usec0 = t0->tv_sec * 1000000 + t0->tv_usec;
+    return (usec1 - usec0);
+//    if (t1->tv_usec < t0->tv_usec) {
+//        td.tv_sec = t1->tv_sec - t0->tv_sec - 1;
+//        td.tv_usec = t1->tv_usec - t0->tv_usec + 1000000;
+//    } else {
+//        td.tv_sec = t1->tv_sec - t0->tv_sec;
+//        td.tv_usec = t1->tv_usec - t0->tv_usec;
+//    }
+//    return td.tv_sec * 1000000 + td.tv_usec;
+}
+
+bool count_second(__suseconds_t uSec) {
+    struct timeval tm;
+    struct timezone tz;
+
+    gettimeofday(&tm, &tz);
+    if (deff_time(&last_time, &tm) > uSec) {
+        last_time.tv_sec = tm.tv_sec;
+        last_time.tv_usec = tm.tv_usec;
+        return true;
+    } else {
+//        printf(VT100_GOTO("3", "70") "time : %d.03%d\n",tm.tv_sec,tm.tv_usec/1000);
+        return false;
+    }
+}
+
+char* print_time(bool start) {
+    static char sTime[32];
+    struct timeval tm;
+    struct timezone tz;
+
+    gettimeofday(&tm, &tz);
+    if (start) {
+        switch_time.tv_sec = tm.tv_sec;
+        switch_time.tv_usec = tm.tv_usec;
+    } else {
+        if (tm.tv_usec < switch_time.tv_usec) {
+            tm.tv_sec = tm.tv_sec - switch_time.tv_sec - 1;
+            tm.tv_usec = tm.tv_usec - switch_time.tv_usec + 1000000;
+        } else {
+            tm.tv_sec = tm.tv_sec - switch_time.tv_sec;
+            tm.tv_usec = tm.tv_usec - switch_time.tv_usec;
+        }
+    }
+    memset(sTime, 0x00, 32);
+    sprintf(sTime, "[% 5d.%06d]", tm.tv_sec, tm.tv_usec);
+    return sTime;
+}
+
+int escape_time(bool start) {
+    static char sTime[32];
+    struct timeval tm;
+    struct timezone tz;
+    static int output;
+
+    gettimeofday(&tm, &tz);
+    if (start) {
+        switch_time.tv_sec = tm.tv_sec;
+        switch_time.tv_usec = tm.tv_usec;
+    } else {
+        if (tm.tv_usec < switch_time.tv_usec) {
+            tm.tv_sec = tm.tv_sec - switch_time.tv_sec - 1;
+            tm.tv_usec = tm.tv_usec - switch_time.tv_usec + 1000000;
+        } else {
+            tm.tv_sec = tm.tv_sec - switch_time.tv_sec;
+            tm.tv_usec = tm.tv_usec - switch_time.tv_usec;
+        }
+    }
+    memset(sTime, 0x00, 32);
+    sprintf(sTime, "[% 5d.%06d]", tm.tv_sec, tm.tv_usec);
+    output = tm.tv_sec * 1000000 + tm.tv_usec;
+    return output;
+}
+
+int switch_chan(SerialCom* comm, int* chan) {
+    char sCommand[32];
+
+    memset(sCommand, 0x00, 32);
+    sprintf(sCommand, "setchan %d\n", *chan);
+    //    printf("%s Set channel = %d\n", print_time(true), chan);
+    print_time(true);
+    ScSend(comm, sCommand, strlen(sCommand));
+    return *chan;
+}
+
+void NF_compute(int currTime, struct scanRslt* NFrslt) {
+    double tmpNF;
+    int i;
+
+    if (global_NF_buf_idx <= 0) return;
+
+    // update minNF
+    tmpNF = NFrslt->minNF;
+    for (i = 0; i < global_NF_buf_idx; i++) {
+        if (tmpNF > global_NF_buf[i])
+            tmpNF = global_NF_buf[i];
+    }
+    NFrslt->minNF = tmpNF;
+
+    // update maxNF
+    tmpNF = NFrslt->maxNF;
+    for (i = 0; i < global_NF_buf_idx; i++) {
+        if (tmpNF < global_NF_buf[i])
+            tmpNF = global_NF_buf[i];
+    }
+    NFrslt->maxNF = tmpNF;
+
+    // accumulate for avgNF computation
+    tmpNF = NFrslt->avgNF * NFrslt->N;
+    for (i = 0; i < global_NF_buf_idx; i++) {
+        tmpNF += global_NF_buf[i];
+    }
+
+    // update N
+    NFrslt->N += global_NF_buf_idx;
+
+    NFrslt->time += currTime;
+
+    // update avgNF
+    NFrslt->avgNF = tmpNF / NFrslt->N;
+
+}
+
+void* ThreadNoiseDetect(void* pParam) {
+    //    int key;            // for keyboard input key
+
+    if (pParam) {
+        char graph[128];
+
+        memset(graph, 0x00, 128);
+        while (true) {
+            int noise = get_noise();
+            int fill = 130 + noise;
+            if (fill < 0) fill = 0;
+            memset(graph, 0x00, 70);
+            memset(graph, '*', fill);
+
+            // wait for channel switch to finish, then record NF values
+            if (escape_time(false) >= SETCHAN_SETTLE_TIME) {
+
+                global_NF_buf[global_NF_buf_idx++] = noise;
+
+                //                printf("%d CH[%d] noise[%d] = % 4d dBm  %s\n",
+                //                    escape_time(false), currentChannel, global_NF_buf_idx-1, noise, graph);               
+                usleep(50000); //sleep 50 ms
+            }
+        }
+    }
+    return NULL;
+}
+
+void printUI(int M, int currCh, int chanList[], struct scanRslt NFrslt[]) {
+    int i;
+
+    if (0 == currCh) {
+        printf(VT100_GOTO("2", "1") VT100_CLEAR);
+        printf(" Channel  Time(s)   #measure      P_avg         P_min       P_max\n");
+    }
+    printf("%s",VT100_GOTO_XY(currCh+3,1));
+    printf("  %d *   %6.1f       %4d         %6.1f        %4d       %4d\n",
+            chanList[currCh], NFrslt[currCh].time / 1000000.0, NFrslt[currCh].N,
+            NFrslt[currCh].avgNF, NFrslt[currCh].minNF, NFrslt[currCh].maxNF);
+//    for (i = 0; i < M; i++) {
+//        if (i == currCh) {
+//            printf("  %d *   %6.1f       %4d         %6.1f        %4d       %4d\n",
+//                    chanList[i], NFrslt[i].time / 1000000.0, NFrslt[i].N, NFrslt[i].avgNF, NFrslt[i].minNF, NFrslt[i].maxNF);
+//        } else {
+//            if (NFrslt[i].N > 0) {
+//                printf("  %d     %6.1f       %4d         %6.1f        %4d       %4d\n",
+//                        chanList[i], NFrslt[i].time / 1000000.0, NFrslt[i].N, NFrslt[i].avgNF, NFrslt[i].minNF, NFrslt[i].maxNF);
+//            } else {
+//                printf("  %d\n", chanList[i]);
+//            }
+//        }
+//    }
+}
+
+static char *print_ip(const char *if_name) {
+
+	static char ip[16];
+
+	struct ifreq ifr;
+	size_t if_name_len = strlen(if_name);
+	struct sockaddr_in *ipaddr;
+
+	if (if_name_len < sizeof(ifr.ifr_name)) {
+		sprintf(ifr.ifr_name, "%s", if_name);
+		ifr.ifr_name[if_name_len] = 0;
+	} else {
+		fputs("ERR: interface name is too long\n", stderr);
+		exit(1);
+	}
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd == -1) {
+		fputs("ERR: socket udp failed\n", stderr);
+		//exit(1);
+	}
+
+	if (ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
+		fputs("ERR: get ip address failed\n", stderr);
+		//exit(1);
+	}
+
+	ipaddr = (struct sockaddr_in *)&ifr.ifr_addr;
+	//printf("IP Address is %s\n", inet_ntoa(ipaddr->sin_addr));
+	sprintf(ip, "%s", inet_ntoa(ipaddr->sin_addr));
+
+	close(fd);
+
+	return ip;
+}
+
+
+
+static char *print_broadcast(const char *if_name) {
+
+	static char ip[16];
+
+	struct ifreq ifr;
+	size_t if_name_len = strlen(if_name);
+	struct sockaddr_in *ipaddr;
+
+	if (if_name_len < sizeof(ifr.ifr_name)) {
+		sprintf(ifr.ifr_name, "%s", if_name);
+		ifr.ifr_name[if_name_len] = 0;
+	} else {
+		fputs("ERR: interface name is too long\n", stderr);
+		//exit(1);
+	}
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd == -1) {
+		fputs("ERR: socket udp failed\n", stderr);
+		//exit(1);
+	}
+
+	if (ioctl(fd, SIOCGIFBRDADDR, &ifr) == -1) {
+		fputs("ERR: get broadcast address failed\n", stderr);
+		//exit(1);
+	}
+
+	ipaddr = (struct sockaddr_in *)&ifr.ifr_addr;
+	//printf("Broadcast Address is %s\n", inet_ntoa(ipaddr->sin_addr));
+	sprintf(ip, "%s", inet_ntoa(ipaddr->sin_addr));
+
+	close(fd);
+
+	return ip;
+}
+
+static char *print_mac(const char *if_name) {
+
+	static char mac_addr[18] = { 0 };
+
+	// Create an ifreq structure for passing data in and out of ioctl
+	struct ifreq ifr;
+	size_t if_name_len = strlen(if_name);
+	struct sockaddr_in* ipaddr;
+
+
+	//printf("Interface: %s\n", if_name);
+	if (if_name_len < sizeof(ifr.ifr_name)) {
+		sprintf(ifr.ifr_name, "%s", if_name);
+		ifr.ifr_name[if_name_len] = 0;
+	} else {
+		fputs("interface name is too long", stderr);
+	}
+
+
+	// Provide an open socket descriptor with the address family AF_INET
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd == -1) {
+		//perror(strerror(errno));
+		fputs("socket failed", stderr);
+	}
+
+
+	// Invoke ioctl
+	// Get MAC
+	if (ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
+		fputs("cannot get mac address", stderr);
+	}
+
+	ipaddr = (struct ifreq*)&ifr;
+	sprintf(mac_addr, "%02X:%02X:%02X:%02X:%02X:%02X",
+		(uchar)ifr.ifr_hwaddr.sa_data[0], (uchar)ifr.ifr_hwaddr.sa_data[1],
+		(uchar)ifr.ifr_hwaddr.sa_data[2], (uchar)ifr.ifr_hwaddr.sa_data[3],
+		(uchar)ifr.ifr_hwaddr.sa_data[4], (uchar)ifr.ifr_hwaddr.sa_data[5]);
+	//printf("MAC address: %s\n", mac_addr);
+
+	close(fd);
+
+	return mac_addr;
+}
+
+void finish_scanning(SerialCom* comm, pthread_t printer) {
+    pthread_cancel(printer);
+    pthread_join(printer, NULL);
+    ScClose(comm);
+    ScExit(comm);
+
+    printf("\nbridge  IP: %s",print_ip("br-lan"));
+    printf("\neth0   MAC: %s",print_mac("eth0"));
+    printf("\nwlan0  MAC: %s",print_mac("wlan0"));
+    // recover keyboard mode
+    tty_reset();
+}
+
+int raw_scan(SerialCom* comm, int chanList[], int Nchannel, struct scanRslt NFrslt[], int scanTime) {
+    //    bool                bRun = true;
+    //    char                cKeys[32];
+    struct timezone tz;
+    int currPeriod; // scan time period for this round of scan
+    int i, j, k, m;
+    int finishFlg; // =1 to mark end of current channel NF measurement
+    int leftScanTime; // leftover scan time, for each channel
+
+    // initiation of NFrslt
+    for (i = 0; i < Nchannel; i++) {
+        NFrslt[i].chIdx = chanList[i];
+        NFrslt[i].minNF = DEFAULT_MIN;
+        NFrslt[i].maxNF = DEFAULT_MAX;
+        NFrslt[i].avgNF = 0;
+        NFrslt[i].baseNF = 0;
+        NFrslt[i].diffNF = 0;
+        NFrslt[i].N = 0;
+        NFrslt[i].time = 0;
+    }
+
+    // setup leftover scan time
+    leftScanTime = scanTime;
+
+    // multiple scan rounds, each have maximum NF_MAX_TIME time for each channel
+    while (leftScanTime > 0) {
+        //setup scan time for this round
+        if (leftScanTime >= NF_MAX_TIME) {
+            currPeriod = NF_MAX_TIME;
+            leftScanTime -= NF_MAX_TIME;
+        } else {
+            if (scanTime == NF_MIN_TIME_MIN) { //internal minimum time 
+                currPeriod = scanTime;
+                leftScanTime = 0;
+            } else {
+                currPeriod = max(leftScanTime, NF_MIN_TIME);
+                leftScanTime = 0;
+            }
+        }
+
+        if (displayType == 0) {
+            printf(VT100_GOTO("1", "1") VT100_CLEAR);
+            printf("scanning channel: ");
+        } else if (displayType == 1) {
+            printf(VT100_GOTO("1", "1") VT100_CLEAR);
+            printf("---------------------------- Channel Scan -------------------------------\n");
+        }
+        // iterate through all channels
+        for (i = 0; i < Nchannel; i++) {
+            // switch to next channel
+            switch_chan(comm, &chanList[i]);
+
+            gettimeofday(&last_time, &tz);
+
+            global_NFrslt_enable = 1;
+
+            global_NF_buf_idx = 0;
+            finishFlg = 0;
+
+            // check for the scan period to finish
+            while (1) {
+                //finish: if time is up, and min NF values are collected
+                if (global_NF_buf_idx >= NF_MIN_NUM && count_second(currPeriod)) {
+                    // update scan result for this channel
+                    NF_compute(currPeriod, &NFrslt[i]);
+                    finishFlg = 1;
+                } else {
+//                    printf(VT100_GOTO("2", "70") "collected : %d\n",global_NF_buf_idx);
+                }
+
+                //finish: if max time is up
+                if (count_second(NF_MAX_TIME)) {
+                    // update scan result for this channel
+                    NF_compute(NF_MAX_TIME, &NFrslt[i]);
+
+                    finishFlg = 1;
+                }
+
+                // finish procedure for current channel
+                if (finishFlg == 1) {
+                    // update display
+                    if (displayType == 0) {
+                        printf(" %d", chanList[i]);
+                        fflush(stdout);
+                    } else if (displayType == 1) {
+                        printUI(Nchannel, i, chanList, NFrslt);
+                        fflush(stdout);
+                    }
+                    break;
+                }
+                //check for keyboard interrupt
+                while (kbhit()) {
+                    if (getchar() == 'q') return -1; // abort scanning
+                }
+            }
+        }
+    }
+
+    if (displayType == 0) printf("\n");
+
+    return 0;
+}
+
+void find_best_channel(int chanListAll[MAX_CHANNEL_N], int NchannelAll,
+        struct scanRslt NFrslt[MAX_CHANNEL_N],
+        int tempListIdx[MAX_CHANNEL_N], int tempListNF[MAX_CHANNEL_N]) {
+    int i, j, k, temp;
+    int minNFAll = DEFAULT_MIN;
+
+    //initiation
+    for (i = 0; i < NchannelAll; i++) {
+        tempListIdx[i] = NFrslt[i].chIdx;
+        tempListNF[i] = NFrslt[i].maxNF;
+    }
+
+    //update overall minimum NF
+    for (i = 0; i < NchannelAll; i++)
+        minNFAll = min(minNFAll, tempListNF[i]);
+    // adjust NF values
+#if 0
+    for (i = 0; i < NchannelAll; i++)
+        tempListNF[i] -= minNFAll;
+#endif
+
+    //reorganize channels with increasing NF values
+    for (i = 0; i < NchannelAll - 1; i++) {
+        //reorganize channels with increasing NF values
+        for (j = i + 1; j < NchannelAll; j++) {
+            if (tempListNF[i] > tempListNF[j]) {
+                // switch NF values
+                temp = tempListNF[i];
+                tempListNF[i] = tempListNF[j];
+                tempListNF[j] = temp;
+                // switch idx values
+                temp = tempListIdx[i];
+                tempListIdx[i] = tempListIdx[j];
+                tempListIdx[j] = temp;
+            }
+        }
+    }
+}
+
+void display_result(int NchannelAll, struct scanRslt NFrslt[MAX_CHANNEL_N],
+        int tempListIdx[MAX_CHANNEL_N], int tempListNF[MAX_CHANNEL_N]) {
+    int k;
+
+    FILE* fp = fopen(SCAN_LOG_FILE,"w");
+    if (displayType == 1) {
+        printf("----------------------- channel scan result -----------------------\n");
+        printf("channel      signal_strength\n");
+        if (fp) fprintf(fp, "channel      signal_strength\n");
+    }
+
+    switch (outputType) {
+        case 0:
+            for (k = 0; k < NchannelAll; k++) {
+                printf("%d            :%d\n", tempListIdx[k], tempListNF[k]);
+                if (fp) fprintf(fp, "%d            :%d\n", tempListIdx[k], tempListNF[k]);
+            }
+            break;
+        case 1:
+            for (k = 0; k < NchannelAll; k++) {
+                printf("%d            :%d\n", NFrslt[k].chIdx, NFrslt[k].maxNF);
+                if (fp) fprintf(fp, "%d            :%d\n", NFrslt[k].chIdx, NFrslt[k].maxNF);
+            }
+            break;
+    }
+    if (fp) fclose(fp);
+}
+
+int chanscan_main(int argc, char** argv) {
+    SerialCom comm;
+    pthread_t printer = 0;
+    int nPort = 1;
+    int nBaud = 9600;
+    int nBits = 8;
+    int nStop = 1;
+    char cParity = 'N';
+    int scanTime = NF_MIN_TIME; // scan time in seconds, for each channel
+    int NchannelAll;
+    int i, j, k, m;
+    struct scanRslt NFrslt[MAX_CHANNEL_N]; // NF results for all channels      
+    int chanListAll[MAX_CHANNEL_N];
+    int tempListIdx[MAX_CHANNEL_N];
+    int tempListNF[MAX_CHANNEL_N];
+    struct timeval Tnow;
+
+    //check if time is within 2min from power up
+    gettimeofday(&Tnow, NULL);
+    if (Tnow.tv_sec > CHANSCAN_TIME_LIMIT) {
+        //		printf("\n%d:%d:%d\n",(Tnow.tv_sec/3600), (Tnow.tv_sec % 3600) / 60, Tnow.tv_sec % 3600);
+        //            printf("Channel scan time limit expired. Please reboot system\n");
+        //            printf("and perform chanscan within %d seconds.\n", CHANSCAN_TIME_LIMIT);
+        //            exit(0);
+    }
+
+    // prepare for serial 
+    ReadFileConf(&comm, &nPort, &nBaud, &nBits, &nStop, &cParity);
+    // extract command line parameters
+    ReadLineConf(argc, argv, &nPort, &nBaud, &nBits, &nStop, &cParity, &scanTime, chanListAll, &NchannelAll);
+    // set for keyboard interrupt
+    tty_set();
+
+    //    printf("nPort=%d, nBaud=%d, nBits=%d, nStop=%d, cParity=%d\n", nPort, nBaud, nBits, nStop, cParity);   
+
+    ScInit(&comm, 0); //nonblock mode
+    if (ScOpen(&comm, nPort, nBaud, nBits, nStop, cParity) != true) {
+        finish_scanning(&comm, printer);
+        return -1;
+    }
+
+    pthread_create(&printer, NULL, ThreadNoiseDetect, &comm);
+    //    usleep(500000);
+
+    //initation
+    for (i = 0; i < MAX_CHANNEL_N; i++) {
+        tempListIdx[i] = DEFAULT_NO_CHANNEL_IDX;
+        tempListNF[i] = DEFAULT_MIN;
+    }
+
+    //if no command line input channel list exists, use defaultList
+    if (NchannelAll == 0) {
+        NchannelAll = sizeof (defaultList) / sizeof (defaultList[0]);
+        for (i = 0; i < NchannelAll; i++) chanListAll[i] = defaultList[i];
+    }
+
+    //scan to search for baseCH
+    if (raw_scan(&comm, chanListAll, NchannelAll, NFrslt, scanTime) == -1) {
+        finish_scanning(&comm, printer);
+        return -1;
+    }
+    // detect best channels
+    find_best_channel(chanListAll, NchannelAll, NFrslt, tempListIdx, tempListNF);
+
+    display_result(NchannelAll, NFrslt, tempListIdx, tempListNF);
+
+    finish_scanning(&comm, printer);
+    return 0;
+}
+

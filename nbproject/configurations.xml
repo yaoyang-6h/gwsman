@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="94">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <logicalFolder name="f1" displayName="include" projectFiles="true">
+      <itemPath>include/GuiMain.h</itemPath>
+      <itemPath>include/PipeShell.h</itemPath>
+      <itemPath>include/SvrMain.h</itemPath>
+      <itemPath>include/gwsman.h</itemPath>
+      <itemPath>include/gwsmanlib.h</itemPath>
+      <itemPath>include/lcd.h</itemPath>
+      <itemPath>include/shmem.h</itemPath>
+      <itemPath>include/wsocket.h</itemPath>
+    </logicalFolder>
+    <logicalFolder name="SourceFiles" displayName="source" projectFiles="true">
+      <logicalFolder name="iw" displayName="iw" projectFiles="true">
+        <itemPath>src/iw/bitrate.c</itemPath>
+        <itemPath>src/iw/connect.c</itemPath>
+        <itemPath>src/iw/cqm.c</itemPath>
+        <itemPath>src/iw/event.c</itemPath>
+        <itemPath>src/iw/genl.c</itemPath>
+        <itemPath>src/iw/hwsim.c</itemPath>
+        <itemPath>src/iw/ibss.c</itemPath>
+        <itemPath>src/iw/ieee80211.h</itemPath>
+        <itemPath>src/iw/info.c</itemPath>
+        <itemPath>src/iw/interface.c</itemPath>
+        <itemPath>src/iw/iw.c</itemPath>
+        <itemPath>src/iw/iw.h</itemPath>
+        <itemPath>src/iw/link.c</itemPath>
+        <itemPath>src/iw/mesh.c</itemPath>
+        <itemPath>src/iw/mpath.c</itemPath>
+        <itemPath>src/iw/nl80211.h</itemPath>
+        <itemPath>src/iw/offch.c</itemPath>
+        <itemPath>src/iw/phy.c</itemPath>
+        <itemPath>src/iw/ps.c</itemPath>
+        <itemPath>src/iw/reason.c</itemPath>
+        <itemPath>src/iw/reg.c</itemPath>
+        <itemPath>src/iw/roc.c</itemPath>
+        <itemPath>src/iw/scan.c</itemPath>
+        <itemPath>src/iw/sections.c</itemPath>
+        <itemPath>src/iw/station.c</itemPath>
+        <itemPath>src/iw/status.c</itemPath>
+        <itemPath>src/iw/survey.c</itemPath>
+        <itemPath>src/iw/util.c</itemPath>
+        <itemPath>src/iw/version.c</itemPath>
+        <itemPath>src/iw/wowlan.c</itemPath>
+      </logicalFolder>
+      <logicalFolder name="f1" displayName="iwinfo" projectFiles="true">
+        <itemPath>src/libiwinfo/iwinfo_lib.c</itemPath>
+        <itemPath>src/libiwinfo/iwinfo_lua.c</itemPath>
+        <itemPath>src/libiwinfo/iwinfo_madwifi.c</itemPath>
+        <itemPath>src/libiwinfo/iwinfo_nl80211.c</itemPath>
+        <itemPath>src/libiwinfo/iwinfo_utils.c</itemPath>
+        <itemPath>src/libiwinfo/iwinfo_wext.c</itemPath>
+        <itemPath>src/libiwinfo/iwinfo_wext_scan.c</itemPath>
+      </logicalFolder>
+      <itemPath>src/GuiMain.c</itemPath>
+      <itemPath>src/PipeShell.c</itemPath>
+      <itemPath>src/SvrMain.c</itemPath>
+      <itemPath>src/SvrMon.c</itemPath>
+      <itemPath>src/art_tool.c</itemPath>
+      <itemPath>src/gwsbuffer.c</itemPath>
+      <itemPath>src/gwsman.c</itemPath>
+      <itemPath>src/gwsmanlib.c</itemPath>
+      <itemPath>src/lcd_comm.c</itemPath>
+      <itemPath>src/lcd_dev.c</itemPath>
+      <itemPath>src/lcd_sp.c</itemPath>
+      <itemPath>src/lcd_sp4lcd.c</itemPath>
+      <itemPath>src/routeNeg.c</itemPath>
+      <itemPath>src/shmem.c</itemPath>
+      <itemPath>src/socketbase.c</itemPath>
+    </logicalFolder>
+    <logicalFolder name="ResourceFiles" displayName="资源文件" projectFiles="true">
+    </logicalFolder>
+    <logicalFolder name="TestFiles"
+                   displayName="测试文件"
+                   projectFiles="false"
+                   kind="TEST_LOGICAL_FOLDER">
+    </logicalFolder>
+    <logicalFolder name="ExternalFiles"
+                   displayName="重要文件"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>Makefile</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceRootList>
+    <Elem>src/iw</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="Release" type="1">
+      <toolsSet>
+        <compilerSet>GNU_MIPS32|GNU</compilerSet>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <cTool>
+          <developmentMode>5</developmentMode>
+          <commandlineTool>mips-openwrt-linux-gcc</commandlineTool>
+          <incDir>
+            <pElem>include</pElem>
+            <pElem>src/libiwinfo/include</pElem>
+            <pElem>../../build_dir/target-mips_r2_uClibc-0.9.33.2/libnl-2.0/include</pElem>
+            <pElem>../../build_dir/target-mips_r2_uClibc-0.9.33.2/lua-5.1.4/ipkg-install/usr/include</pElem>
+          </incDir>
+          <preprocessorList>
+            <Elem>CONFIG_LIBNL20</Elem>
+          </preprocessorList>
+        </cTool>
+        <ccTool>
+          <developmentMode>5</developmentMode>
+          <incDir>
+            <pElem>include</pElem>
+          </incDir>
+        </ccTool>
+        <fortranCompilerTool>
+          <developmentMode>5</developmentMode>
+        </fortranCompilerTool>
+        <asmTool>
+          <developmentMode>5</developmentMode>
+        </asmTool>
+        <linkerTool>
+          <linkerAddLib>
+            <pElem>src</pElem>
+          </linkerAddLib>
+          <linkerLibItems>
+            <linkerLibStdlibItem>Mathematics</linkerLibStdlibItem>
+            <linkerLibFileItem>libs/libreadconf.a</linkerLibFileItem>
+            <linkerLibFileItem>libs/libserialcom.a</linkerLibFileItem>
+            <linkerLibFileItem>libs/liblua.a</linkerLibFileItem>
+            <linkerLibFileItem>libs/libnl.a</linkerLibFileItem>
+            <linkerLibFileItem>libs/libnl-genl.a</linkerLibFileItem>
+          </linkerLibItems>
+          <commandLine>-lpthread</commandLine>
+        </linkerTool>
+      </compileType>
+      <item path="include/GuiMain.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/PipeShell.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/SvrMain.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/gwsman.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/gwsmanlib.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/lcd.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/shmem.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/wsocket.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/GuiMain.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/PipeShell.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/SvrMain.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/SvrMon.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/art_tool.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/gwsbuffer.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/gwsman.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/gwsmanlib.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/bitrate.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/connect.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/cqm.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/event.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/genl.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/hwsim.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/ibss.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/ieee80211.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/iw/info.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/interface.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/iw.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/iw.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/iw/link.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/mesh.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/mpath.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/nl80211.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/iw/offch.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/phy.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/ps.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/reason.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/reg.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/roc.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/scan.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/sections.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/station.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/status.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/survey.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/util.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/version.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/wowlan.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_comm.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_dev.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_sp.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_sp4lcd.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_lib.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_lua.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_madwifi.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_nl80211.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_utils.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_wext.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_wext_scan.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/routeNeg.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/shmem.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/socketbase.c" ex="false" tool="0" flavor2="0">
+      </item>
+    </conf>
+    <conf name="Debug" type="1">
+      <toolsSet>
+        <compilerSet>default</compilerSet>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <linkerTool>
+          <linkerLibItems>
+            <linkerLibFileItem>../../libs/serialcom/dist/Debug/GNU-Linux-x86/libserialcom.a</linkerLibFileItem>
+            <linkerLibFileItem>../../libs/readconf/dist/Debug/GNU-Linux-x86/libreadconf.a</linkerLibFileItem>
+          </linkerLibItems>
+          <commandLine>-lpthread</commandLine>
+        </linkerTool>
+      </compileType>
+      <item path="include/GuiMain.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/PipeShell.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/SvrMain.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/gwsman.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/gwsmanlib.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/lcd.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/shmem.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/wsocket.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/GuiMain.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/PipeShell.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/SvrMain.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/SvrMon.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/art_tool.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/gwsbuffer.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/gwsman.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/gwsmanlib.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/bitrate.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/connect.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/cqm.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/event.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/genl.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/hwsim.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/ibss.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/ieee80211.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/iw/info.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/interface.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/iw.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/iw.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/iw/link.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/mesh.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/mpath.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/nl80211.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/iw/offch.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/phy.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/ps.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/reason.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/reg.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/roc.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/scan.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/sections.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/station.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/status.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/survey.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/util.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/version.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/iw/wowlan.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_comm.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_dev.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_sp.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/lcd_sp4lcd.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_lib.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_lua.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_madwifi.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_nl80211.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_utils.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_wext.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/libiwinfo/iwinfo_wext_scan.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/routeNeg.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/shmem.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="src/socketbase.c" ex="false" tool="0" flavor2="0">
+      </item>
+    </conf>
+  </confs>
+</configurationDescriptor>

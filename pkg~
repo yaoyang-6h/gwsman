@@ -1,0 +1,3 @@
+echo Restore Makefile-pkg to Makefile
+cp ./mk/Makefile-pkg Makefile
+echo Can build as OpenWrt package now!

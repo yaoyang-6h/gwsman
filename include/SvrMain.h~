@@ -1,0 +1,158 @@
+/* 
+ * File:   GuiMain.h
+ * Author: wyy
+ *
+ * Created on 2014年3月5日, 下午12:03
+ */
+
+#ifndef GUIMAIN_H
+#define	GUIMAIN_H
+
+#ifndef bool
+#define bool    int
+#endif
+#ifndef true
+#define true    1
+#endif
+#ifndef false
+#define false   0
+#endif
+#ifndef NULL    
+#define NULL    0
+#endif
+
+#define LANG_CHINESE    936
+#define LANG_ENGLISH    437
+
+#ifdef RELEASE_ON_ARM
+#define LANGUAGE        LANG_ENGLISH
+#else
+#define LANGUAGE        LANG_CHINESE
+#endif
+
+#ifdef  RELEASE_ON_ARM
+#define IS_ENTER_KEY(nKey)  true
+#else   //RELEASE_ON_ARM
+#define IS_ENTER_KEY(nKey)  (KEY_ENTER == nKey || KEY_LF == nKey)
+#endif  //RELEASE_ON_ARM
+
+#define BYTE        unsigned char
+#define KEY_LF          ((short)10)
+#define KEY_ENTER       ((short)13)
+#define KEY_ESC         ((short)27)
+#define KEY_CTRL_A      ((short)1)
+#define KEY_CTRL_Q      ((short)17)
+#define KEY_CTRL_Z      ((short)26)
+#define KEY_BACKSPACE   ((short)127)
+
+#define MAX_KEYS_BUFF   20
+
+#define DISP_NORMAL     VT100_RESET
+#define DISP_READONLY   VT100_COLOR(VT100_B_BLACK,VT100_F_WHITE)
+#define DISP_READWRITE  VT100_COLOR(VT100_B_RED,VT100_F_WHITE) VT100_UNDER_LINE
+#define DISP_DYNAMIC    VT100_COLOR(VT100_B_BLACK,VT100_F_WHITE) VT100_HIGHT_LIGHT
+
+
+typedef struct __gws_index {
+    int         m_param_key;
+    char        m_param_title[32];
+} GWS_PARA_INDEX;
+
+enum CValueType {
+    VAR_BOOL = 0,
+    VAR_INTEGER,
+    VAR_STRING,
+    VAR_LIST,
+};
+
+typedef struct __binding_value {
+    int         m_nType;
+    void*       m_pValue;
+} BindValue;
+
+void ClearBindValue(BindValue* bv);
+void InitBindValue(BindValue* bv, const char type, void* pValue);
+void VB_Load(BindValue* bv, int type, void* pValue);
+char* VB_AsString(BindValue* bv);
+int VB_AsInt(BindValue* bv);
+IW_LIST* VB_AsList(BindValue* bv);
+int BindValueType(BindValue* bv);
+
+typedef struct __var_binding {
+    char        m_k;
+    int         m_x;
+    int         m_y;
+    int         m_index;
+    char        m_title[32];
+    char        m_attri[32];
+    BindValue   m_value;
+} VarBind;
+
+void InitVarBind0(VarBind* vb,char k,int x,int y,int idx, char* title, char* attri);
+void InitVarBind(VarBind* vb,char k,int x,int y,const GWS_PARA_INDEX* p,char* attri);
+
+//void m_Print(int colWidth);
+
+#define MAX_GWS_BUFF    4096
+typedef struct __gws_buffer {
+    bool                m_bEmpty;
+    bool                m_bComplete;
+    pthread_mutex_t	m_hAccess;
+    char*               m_pBuffer;
+    char                m_sBuffer[MAX_GWS_BUFF];
+} GWS_BUFF;
+
+void BufInit(GWS_BUFF* gb);
+void BufExit(GWS_BUFF* gb);
+void BufClear(GWS_BUFF* gb);
+bool BufIsEmpty(GWS_BUFF* gb);
+bool BufGetBuff(GWS_BUFF* gb,char* buf, bool clear);
+bool BufAppend(GWS_BUFF* gb,char* data);
+
+enum WorkingMode {
+    MODE_SERVER = 1,
+    MODE_GUI,
+    MODE_SCAN,
+    MODE_SVR_SCAN,
+    MODE_COMMAND_LINE,
+};
+
+#define _GWS_DEBUG
+
+//#define GET_RFINFO      'I'
+#define SCAN_CHAN       'S'
+#define STOP_CHAN       's'
+#define SCAN_SHOW       'N'
+#define SET_CHAN        'C'
+#define SET_TXCAL       'X'
+#define SET_RXCAL       'V'
+#define SET_TXON        'T'
+#define SET_RXON        'R'
+#define SET_TXPWR       'P'
+#define SET_GAIN        'G'
+#define SET_TXATT       'A'
+#define SHUTDOWN        'O'
+#define WIFI_TXPW       'W'
+#define SET_MODE        'M'
+
+#define COMMAND_LINE    "1"
+#define COMMAND_COLUM   "30"
+#define STATUS_LINE     "24"
+#define BOTTOM_LINE     "25"
+
+#define CONFIG_FILE     "/etc/config/gwsman.conf"
+#define SCAN_LOG_FILE   "/var/log/chanscan.log"
+
+#define ShowStatusBar(fmt,...)        do {              \
+            ShowTime();     \
+            printf(VT100_GOTO(STATUS_LINE,"1"));               \
+            printf(VT100_RESET VT100_INVERT fmt VT100_RESET,##__VA_ARGS__);  \
+            fflush(stdout);     \
+        } while (0)
+
+time_t ShowTime();
+void ShowCommandLine(char* szPrompt);
+int lcd_main(int argc, char **argv);
+
+#endif	/* GUIMAIN_H */
+
